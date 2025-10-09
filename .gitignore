@@ -32,3 +32,8 @@ Thumbs.db
 
 # virtual env
 venv/
+
+# env variables
+.env
+
+/backend/__pycache__
