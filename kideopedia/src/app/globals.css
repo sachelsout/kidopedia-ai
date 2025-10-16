@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #3994c2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #557db5;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+Button{
+  box-shadow: 10px 3px 2px black;
+
+}
+.field{
+  display: block;        /* occupy full line */
+  width: 100%;
+  text-align: center;    /* center text content */
+  color: rgb(227, 233, 226);
+  font-size: xx-large;
+  margin-bottom: 12px;
+  margin-right: 2px;
+}
+
+
+.bbh-sans-hegarty-regular {
+  font-family: "BBH Sans Hegarty", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+
+}
