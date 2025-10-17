@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Input, Button } from "@chakra-ui/react";
 import { Baloo_2 } from "next/font/google";
 
@@ -9,6 +10,32 @@ const baloo = Baloo_2({
 });
 
 export default function Body() {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // 🔹 Function to call Flask backend
+  const handleAsk = async () => {
+    if (!question.trim()) return;
+    setLoading(true);
+    setAnswer("");
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const data = await res.json();
+      setAnswer(data.answer || "No answer received.");
+    } catch (err) {
+      console.error("Error:", err);
+      setAnswer("Error: could not reach the backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-[#5b78b4] text-center">
       {/* Panda Mascot */}
@@ -63,6 +90,8 @@ export default function Body() {
         <Input
           size="md"
           placeholder="Ask me anything"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
           className="center-input"
           style={{
             width: "200px",
@@ -70,14 +99,28 @@ export default function Body() {
             borderRadius: "50px",
           }}
         />
-        <Button size="md" colorPalette="green" className="center-button">
-          Click me
+        <Button
+          size="md"
+          colorPalette="green"
+          className="center-button"
+          onClick={handleAsk}
+          disabled={loading}
+        >
+          {loading ? "Thinking..." : "Ask"}
         </Button>
+
+        {/* Answer display */}
+        {answer && (
+          <p style={{ color: "white", marginTop: "1rem", width: "70%" }}>
+            <strong>Answer:</strong> {answer}
+          </p>
+        )}
       </div>
 
+      {/* existing styles remain unchanged */}
       <style jsx>{`
         main {
-          height: 100vh; /* exactly fill the viewport height */
+          height: 100vh;
           width: 100%;
           margin: 0;
           padding: 0;
@@ -87,7 +130,7 @@ export default function Body() {
           align-items: center;
           background-color: #5b78b4;
           overflow: hidden;
-          position: fixed; /* lock layout to prevent scroll white space */
+          position: fixed;
           top: 0;
           left: 0;
         }
@@ -128,7 +171,7 @@ export default function Body() {
         .i-dot {
           position: absolute;
           left: 50%;
-          top: 0.22em; /* lowered to align with the white i tittles */
+          top: 0.22em;
           width: 0.28em;
           height: 0.28em;
           border-radius: 50%;
@@ -150,7 +193,7 @@ export default function Body() {
           align-items: center;
           justify-content: center;
           gap: 1.2rem;
-          margin-top: 0.25rem; /* move input field and button slightly upward */
+          margin-top: 0.25rem;
           width: 100%;
         }
 
@@ -167,6 +210,7 @@ export default function Body() {
           box-shadow: 0 0 25px rgba(72, 187, 120, 0.9), 0 0 50px rgba(72, 187, 120, 0.6);
           transition: all 0.25s ease-in-out;
         }
+
         @media (max-width: 600px) {
           .i-dot {
             top: -0.55em;
