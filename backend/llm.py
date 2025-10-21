@@ -33,7 +33,19 @@ def generate_ai_response(prompt, retries=10, delay=2):
         try:
             response = requests.post(OPENROUTER_URL, headers=headers, json=data)
             response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
+            response_json = response.json()
+
+            # Try to extract text content safely from multiple possible structures
+            if "choices" in response_json:
+                choice = response_json["choices"][0]
+                if "message" in choice and "content" in choice["message"]:
+                    return choice["message"]["content"]
+                elif "text" in choice:
+                    return choice["text"]
+
+            # If the response is empty or unexpected, log it for debugging
+            print("Unexpected response format:", response_json)
+            return "Sorry, I couldn't generate an answer right now. Try again later."
         except requests.exceptions.HTTPError as e:
             if response.status_code == 429:
                 print(f"Rate limit hit, retrying in {delay} seconds...")
