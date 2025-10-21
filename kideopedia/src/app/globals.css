@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #3994c2;
+  --background: #5b78b4 !important;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -16,13 +16,23 @@
   :root {
     --background: #557db5;
     --foreground: #ededed;
+       
   }
 }
 
 body {
-  background: var(--background);
+  background-color: #5b78b4 !important; /* Ensure background fills entire viewport */
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100vh;
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 Button{
   box-shadow: 10px 3px 2px black;
@@ -44,4 +54,22 @@ Button{
   font-weight: 400;
   font-style: normal;
 
+}
+
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100%;
+  min-height: 100%;
+  background-color: #5b78b4 !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+@supports (height: 100svh) {
+  html, body {
+    height: 100svh;
+    min-height: 100svh;
+    background-color: #5b78b4 !important;
+  }
 }
