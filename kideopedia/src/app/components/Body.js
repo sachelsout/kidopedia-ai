@@ -15,7 +15,7 @@ export default function Body() {
   const [imageUrl, setImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 🔹 Function to call Flask backend
+  // 🔹 Function to call Flask backend with conversation memory
   const handleAsk = async () => {
     if (!question.trim()) return;
     setLoading(true);
@@ -23,18 +23,60 @@ export default function Body() {
     setImageUrl("");
     setQuestion(""); // clear input field after click
 
+    const endpoint = "http://127.0.0.1:8002/api/chat";
+    console.log("Calling chat endpoint:", endpoint);
     try {
-      const res = await fetch("http://127.0.0.1:8000/ask", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        credentials: "include",
+        body: JSON.stringify({
+          message: question,
+          last_image_url: imageUrl || null,
+        }),
       });
+      console.log("📤 Sending last_image_url:", imageUrl);
+      if (!res.ok) {
+        setAnswer(`Network error: ${res.status} ${res.statusText}`);
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
-      setAnswer(data.answer || "No answer received.");
+      setAnswer(data.reply || "No answer received.");
       setImageUrl(data.image_url || "");
+      console.log("📥 Received image_url from backend:", data.image_url);
+      // Optionally handle data.conversation if needed
     } catch (err) {
       console.error("Error:", err);
       setAnswer("Error: could not reach the backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔹 Function to reset conversation, with confirmation popup
+  const handleReset = async () => {
+    const confirmReset = window.confirm(
+      "Start a new chat? Your previous conversation will be lost."
+    );
+    if (!confirmReset) return;
+    setLoading(true);
+    setAnswer("");
+    setImageUrl("");
+    setQuestion("");
+    const resetEndpoint = "http://127.0.0.1:8002/api/reset";
+    console.log("Calling reset endpoint:", resetEndpoint);
+    try {
+      const res = await fetch(resetEndpoint, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        setAnswer(`Network error (reset): ${res.status} ${res.statusText}`);
+      }
+    } catch (err) {
+      console.error("Error resetting conversation:", err);
+      setAnswer("Error: could not reset conversation.");
     } finally {
       setLoading(false);
     }
@@ -113,6 +155,17 @@ export default function Body() {
           {loading ? "Thinking..." : "Ask"}
         </Button>
 
+        {/* New Chat reset button */}
+        <Button
+          size="sm"
+          colorScheme="red"
+          mt={2}
+          onClick={handleReset}
+          disabled={loading}
+        >
+          New Chat
+        </Button>
+
         {/* Answer display */}
         {loading ? (
           <div className="panda-spinner">
@@ -128,14 +181,16 @@ export default function Body() {
             </p>
           )
         )}
-        {imageUrl && (
+        {imageUrl ? (
           <div style={{ marginTop: "1.5rem" }}>
+            <p style={{ color: 'white', marginBottom: '0.5rem' }}>
+              <strong>AI Generated Image:</strong>
+            </p>
             <Image
               src={imageUrl}
-              alt="Answer related"
+              alt="AI generated response"
               borderRadius="16px"
               width="100%"
-              height="65%"
               maxWidth="450px"
               objectFit="contain"
               className="fade-in-image"
@@ -143,13 +198,13 @@ export default function Body() {
                 border: '6px solid #C7F2E3',
                 backgroundColor: '#F9FFF9',
                 padding: '8px',
-                // Adaptive dual-layer shadow: dark and pastel, with soft gradient
                 boxShadow:
                   '0 6px 20px rgba(0, 0, 0, 0.25), 0 0 15px rgba(199, 242, 227, 0.6)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                 cursor: 'pointer',
                 marginBottom: '4px'
               }}
+              onClick={() => window.open(imageUrl, "_blank")}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'scale(1.05)';
                 e.currentTarget.style.boxShadow =
@@ -161,8 +216,9 @@ export default function Body() {
                   '0 6px 20px rgba(0, 0, 0, 0.25), 0 0 15px rgba(199, 242, 227, 0.6)';
               }}
             />
+            {console.log("🖼️ Rendering image with URL:", imageUrl)}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* updated styles for zero top/bottom whitespace and visual balance */}
@@ -359,7 +415,20 @@ export default function Body() {
             margin-top: 3rem;
           }
         }
-         .fade-in-image {
+
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #5b78b4;
+          z-index: -1;
+        }
+      `}</style>
+      <style jsx global>{`
+        .fade-in-image {
           animation: fadeIn 1s ease-in-out;
           border: 6px solid #C7F2E3;
           background-color: #F9FFF9;
@@ -378,18 +447,6 @@ export default function Body() {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
-
-        body::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #5b78b4;
-          z-index: -1;
-        }
-
       `}</style>
     </main>
   );
