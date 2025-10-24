@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "content": "Ask: \u201cWho discovered gravity?"
+  },
+  {
+    "role": "assistant",
+    "content": "Gravity was discovered by Sir Isaac Newton! He figured it out in the late 1600s. Newton noticed that objects fall to the ground and that the moon orbits the Earth because of a force called gravity. It helps keep everything in place!"
+  }
+]

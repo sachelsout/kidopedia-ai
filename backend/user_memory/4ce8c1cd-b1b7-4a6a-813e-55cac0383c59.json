@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "content": "What else did he discover?"
+  },
+  {
+    "role": "assistant",
+    "content": "Could you please tell me who you are asking about? That way, I can give you the right information about their discoveries!"
+  }
+]

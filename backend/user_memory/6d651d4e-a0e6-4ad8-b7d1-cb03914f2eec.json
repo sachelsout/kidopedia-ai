@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "content": "What did they do next?\u201d"
+  },
+  {
+    "role": "assistant",
+    "content": "Can you tell me more about what story or situation you are asking about? That way, I can help you better!"
+  }
+]
