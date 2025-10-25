@@ -9,7 +9,8 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
+backend/user_memory/
+flask_session_data
 # testing
 /coverage
 
