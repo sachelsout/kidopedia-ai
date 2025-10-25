@@ -36,4 +36,7 @@ venv/
 # env variables
 .env
 
-/backend/__pycache__
+# Ignore all Python cache folders
+__pycache__/
+**/__pycache__/
+*.pyc
