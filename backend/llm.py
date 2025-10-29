@@ -1,46 +1,34 @@
-import flask
-if not hasattr(flask.Flask, "session_cookie_name"):
-    flask.Flask.session_cookie_name = "session"
-
 import os
-import sys
 import json
-import requests
 from pathlib import Path
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from ai_providers.provider_factory import get_text_provider, get_image_provider
 from dotenv import load_dotenv
 
-# --- Environment Setup ---
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-ENV_PATH = PROJECT_ROOT / ".env"
-
-if not ENV_PATH.exists():
-    print(f"⚠️  .env not found at {ENV_PATH}")
+# --- Load .env ---
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+root_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
+    print(f"🧾 Loaded .env from: {dotenv_path}")
+elif os.path.exists(root_env_path):
+    load_dotenv(root_env_path)
+    print(f"🧾 Loaded .env from: {root_env_path}")
 else:
-    print(f"🧾 Loading .env from: {ENV_PATH}")
-    load_dotenv(dotenv_path=ENV_PATH)
+    print("⚠️ No .env file found. Using system environment variables.")
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise ValueError("❌ OPENAI_API_KEY not found in .env file.")
-else:
-    OPENAI_API_KEY = OPENAI_API_KEY.strip()
-    print("🔑 Loaded OpenAI key (first 10 chars):", OPENAI_API_KEY[:10])
+# --- System prompt ---
+SYSTEM_PROMPT = """
+You are Kidopedia AI, a friendly and factually accurate educational assistant for children aged 7–12.
+Be kind, use simple words, and keep your answers short (1-2 sentences).
+You must remember the conversation history and answer follow-up questions based on previous messages.
+"""
 
-app = Flask(__name__)
-CORS(app, resources={r"/api/*": {
-    "origins": [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001"
-    ],
-    "methods": ["GET", "POST", "OPTIONS"],
-    "allow_headers": ["Content-Type", "Authorization"],
-}}, supports_credentials=True)
+# --- Providers ---
+text_provider = get_text_provider()
+image_provider = get_image_provider()
 
-MEMORY_DIR = Path(__file__).resolve().parent / "user_memory"
+# --- Memory directory for sessions ---
+MEMORY_DIR = Path(__file__).parent / "user_memory"
 MEMORY_DIR.mkdir(exist_ok=True)
 
 def get_session_path(session_id: str) -> Path:
@@ -50,169 +38,95 @@ def load_conversation(session_id: str):
     path = get_session_path(session_id)
     if path.exists():
         with open(path, "r") as f:
-            data = json.load(f)
-            return data
-    return []
+            return json.load(f)
+    return [{"role": "system", "content": SYSTEM_PROMPT}]
 
 def save_conversation(session_id: str, conversation):
     path = get_session_path(session_id)
     with open(path, "w") as f:
         json.dump(conversation, f, indent=2)
 
-SYSTEM_PROMPT = """
-You are Kidopedia AI, a friendly, factually correct educational assistant for kids aged 7–12.
-Keep answers fun, simple, and true. If you don’t know something, say “I’m not sure, but I can find out!”.
-When summarizing, use short, cheerful sentences like: “Earlier we talked about how the Wright brothers built airplanes!”
-"""
+EDIT_KEYWORDS = ["edit", "change", "alter", "modify", "replace", "add", "remove", "put", "make", "give", "wear"]
 
-def summarize_conversation(history):
-    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
-    summary_prompt = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": "Summarize this conversation in a short, friendly way for kids:"},
-        {"role": "assistant", "content": str(history)}
-    ]
-    data = {"model": "gpt-4o-mini", "messages": summary_prompt, "temperature": 0.5}
-    try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-        response.raise_for_status()
-        summary = response.json().get("choices", [{}])[0].get("message", {}).get("content", "We talked about fun facts!")
-        return {"role": "system", "content": summary}
-    except Exception as e:
-        print("🚨 Summarization error:", e)
-        return {"role": "system", "content": "Earlier we talked about some cool topics!"}
-
-def generate_ai_response(conversation_history):
-    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
-
-    if len(conversation_history) > 20:
-        print("🧠 Conversation too long — summarizing older context...")
-        summary_message = summarize_conversation(conversation_history[:-10])
-        conversation_history = [summary_message] + conversation_history[-10:]
-
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + conversation_history[-10:]
-    data = {"model": "gpt-4o-mini", "messages": messages, "temperature": 0.4, "top_p": 0.9}
-
-    try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-        response.raise_for_status()
-        assistant_reply = response.json().get("choices", [{}])[0].get("message", {}).get("content", "Sorry, I couldn't generate an answer right now.")
-    except Exception as e:
-        print("🚨 OpenAI Chat API Error:", e)
-        assistant_reply = "Sorry, I couldn't generate an answer right now. Try again later."
-
-    conversation_history.append({"role": "assistant", "content": assistant_reply})
-    return assistant_reply, conversation_history
-
-@app.route("/api/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    user_message = data.get("message", "").strip()
-    session_id = data.get("session_id") or "default_user"
-
-    if not user_message:
-        return jsonify({"error": "No message provided"}), 400
-
+def ask_question(user_message: str, session_id: str = "default_user", is_image_request: bool = False):
     conversation_history = load_conversation(session_id)
     conversation_history.append({"role": "user", "content": user_message})
 
-    # Detect edit intent before generating AI response
-    edit_keywords = ["edit", "change", "alter", "modify", "replace", "add", "remove", "put", "make", "give", "wear"]
+    # --- Detect last image prompt ---
+    last_image_prompt = None
     last_image_url = None
     for msg in reversed(conversation_history):
+        if msg.get("role") == "assistant" and msg.get("image_prompt"):
+            last_image_prompt = msg["image_prompt"]
         if msg.get("role") == "assistant" and msg.get("image_url"):
             last_image_url = msg["image_url"]
+        if last_image_prompt and last_image_url:
             break
-
-    # Skip direct binary image edits and handle via DALL·E 3 regeneration instead
-    if any(word in user_message.lower() for word in edit_keywords) and last_image_url:
-        print("🖼️ Detected edit intent — skipping DALL·E 2 direct upload. Using DALL·E 3 contextual regeneration instead.")
-        pass  # Let the DALL·E 3 regeneration logic below handle it
-
-    assistant_reply, updated_history = generate_ai_response(conversation_history)
 
     image_url = None
-    is_image_prompt = any(k in user_message.lower() for k in ["draw", "show", "picture", "image", "illustrate"])
-    edit_keywords = ["edit", "change", "alter", "modify", "replace", "add", "remove", "put", "make", "give", "wear"]
 
-    last_image_url = None
-    for msg in reversed(conversation_history):
-        if msg.get("role") == "assistant" and msg.get("image_url"):
-            last_image_url = msg["image_url"]
-            break
+    # --- Handle image edits ---
+    if any(word in user_message.lower() for word in EDIT_KEYWORDS) and last_image_prompt:
+        combined_prompt = f"{last_image_prompt}, but now {user_message.lower()}"
+        print(f"🎨 Regenerating image with combined prompt: {combined_prompt}")
+        image_url = image_provider.generate_image(combined_prompt)
+        conversation_history.append({
+            "role": "assistant",
+            "content": "Here’s your updated image! 🎨",
+            "image_url": image_url,
+            "image_prompt": combined_prompt
+        })
 
-    if is_image_prompt:
-        try:
-            img_resp = requests.post(
-                "https://api.openai.com/v1/images/generations",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "dall-e-3", "prompt": user_message, "size": "1024x1024", "n": 1}
-            )
-            img_resp.raise_for_status()
-            image_url = img_resp.json()["data"][0]["url"]
-            updated_history.append({
-                "role": "assistant",
-                "content": "Here’s your image! 🎨",
-                "image_url": image_url,
-                "image_prompt": user_message
-            })
-        except Exception as e:
-            print("🚨 Image generation error:", e)
+    # --- Handle new image request ---
+    elif is_image_request:
+        image_url = image_provider.generate_image(user_message)
+        conversation_history.append({
+            "role": "assistant",
+            "content": "Here’s your image! 🎨",
+            "image_url": image_url,
+            "image_prompt": user_message
+        })
 
-    elif any(word in user_message.lower() for word in edit_keywords) and last_image_url:
-        try:
-            previous_prompt = None
-            for msg in reversed(conversation_history):
-                if msg.get("role") == "assistant" and msg.get("image_prompt"):
-                    previous_prompt = msg["image_prompt"]
-                    break
+    # --- Handle text generation ---
+    else:
+        reply = text_provider.generate_text(conversation_history, SYSTEM_PROMPT)
+        conversation_history.append({"role": "assistant", "content": reply})
 
-            base_prompt = previous_prompt or "a fun kid-friendly illustration"
-            combined_prompt = f"{base_prompt}, but now {user_message.lower()}"
+    save_conversation(session_id, conversation_history)
+    last_reply = conversation_history[-1]["content"]
+    return last_reply, image_url, conversation_history
 
-            print(f"🎨 Using combined prompt for edit: {combined_prompt}")
+# --- Flask integration ---
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-            # Regenerate image using DALL·E 3
-            img_regen_resp = requests.post(
-                "https://api.openai.com/v1/images/generations",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "dall-e-3", "prompt": combined_prompt, "size": "1024x1024", "n": 1}
-            )
-            img_regen_resp.raise_for_status()
+app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-            image_url = img_regen_resp.json()["data"][0]["url"]
+@app.route("/api/chat", methods=["POST"])
+def chat_api():
+    data = request.get_json()
+    user_message = data.get("message", "")
+    session_id = data.get("session_id", "default_user")
+    is_image = any(word in user_message.lower() for word in ["draw", "show", "picture", "image"])
+    
+    reply, image_url, conversation = ask_question(
+        user_message,
+        session_id=session_id,
+        is_image_request=is_image
+    )
 
-            updated_history.append({
-                "role": "assistant",
-                "content": "Here’s your updated image! 🎨 (Generated using DALL·E 3)",
-                "image_url": image_url,
-                "image_prompt": combined_prompt
-            })
-
-            save_conversation(session_id, updated_history)
-            return jsonify({
-                "reply": "Here’s your updated image! 🎨 (Generated using DALL·E 3)",
-                "image_url": image_url,
-                "conversation": updated_history,
-                "session_id": session_id
-            })
-
-        except Exception as e:
-            print("🚨 Image edit error:", e)
-            return jsonify({
-                "reply": "Sorry, I couldn't edit the image right now. Please try again.",
-                "conversation": conversation_history,
-                "session_id": session_id
-            })
-
-    save_conversation(session_id, updated_history)
-
-    return jsonify({"reply": updated_history[-1]["content"], "image_url": image_url, "conversation": updated_history, "session_id": session_id})
+    return jsonify({
+        "reply": reply,
+        "image_url": image_url,
+        "conversation": conversation,
+        "session_id": session_id
+    })
 
 @app.route("/api/reset", methods=["POST"])
-def reset():
+def reset_api():
     data = request.get_json() or {}
-    session_id = data.get("session_id") or "default_user"
+    session_id = data.get("session_id", "default_user")
     path = get_session_path(session_id)
     if path.exists():
         path.unlink()

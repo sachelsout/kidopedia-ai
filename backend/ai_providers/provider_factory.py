@@ -10,20 +10,34 @@ from .image.pollinations_image_provider import PollinationsImageProvider
 
 # ---- Text Provider ----
 def get_text_provider():
-    provider_name = os.getenv("AI_TEXT_PROVIDER", "openai").lower()
+    provider_name = os.getenv("AI_TEXT_PROVIDER", "openrouter").lower()
+
     if provider_name == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            print("[WARNING] OPENAI_API_KEY not found. Falling back to OpenRouter (free).")
+            return OpenRouterTextProvider()
         return OpenAITextProvider()
+
     elif provider_name == "openrouter":
         return OpenRouterTextProvider()
+
     else:
         raise ValueError(f"Unknown text provider: {provider_name}")
 
 # ---- Image Provider ----
 def get_image_provider():
-    provider_name = os.getenv("AI_IMAGE_PROVIDER", "openai").lower()
+    provider_name = os.getenv("AI_IMAGE_PROVIDER", "pollinations").lower()
+
     if provider_name == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            print("[WARNING] OPENAI_API_KEY not found. Falling back to Pollinations (free).")
+            return PollinationsImageProvider()
         return OpenAIImageProvider()
+
     elif provider_name == "pollinations":
         return PollinationsImageProvider()
+
     else:
         raise ValueError(f"Unknown image provider: {provider_name}")

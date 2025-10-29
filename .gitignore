@@ -40,3 +40,5 @@ venv/
 __pycache__/
 **/__pycache__/
 *.pyc
+
+backend/user_memory/

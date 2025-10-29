@@ -22,9 +22,7 @@ class OpenAITextProvider(BaseTextProvider):
         try:
             response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
             response.raise_for_status()
-            assistant_reply = response.json()["choices"][0]["message"]["content"]
+            return response.json()["choices"][0]["message"]["content"]
         except Exception as e:
             print("🚨 OpenAI API Error:", e)
-            assistant_reply = "Sorry, I couldn't generate an answer right now. Try again later."
-
-        return assistant_reply
+            return "Sorry, I couldn't generate an answer right now. Try again later."

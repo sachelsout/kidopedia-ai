@@ -1,19 +1,9 @@
 from abc import ABC, abstractmethod
 
 class BaseImageProvider(ABC):
-    """
-    Abstract base class for all image generation providers.
-    """
-
     @abstractmethod
-    def generate_image(self, prompt):
+    def generate_image(self, prompt: str) -> str:
         """
-        Generate an image URL given a text prompt.
-
-        Args:
-            prompt (str): Text describing the desired image
-
-        Returns:
-            str: URL of generated image
+        Generate an image URL for the given prompt.
         """
         pass
