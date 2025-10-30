@@ -175,11 +175,21 @@ export default function Body() {
             <span className="i-letter">i</span>
             <span className="i-dot" />
           </span>
-          dopedia
+          d
+          <span className="i-letter">o</span>
+          p
+          <span className="i-letter">e</span>
+          d
           <span className="i-wrap">
-            <span className="i-letter"> AI</span>
+            <span className="i-letter">i</span>
             <span className="i-dot" />
           </span>
+          a<span style={{ marginRight: "0.01em" }}> </span>
+<span className="i-wrap">
+  <span className="i-letter">AI</span>
+  <span className="i-dot ai-dot" />
+</span>
+
         </span>
       </label>
 
@@ -196,7 +206,7 @@ export default function Body() {
 
         <Button
           size="lg"
-          colorScheme="green"
+          colorPalette="green"
           className="center-button"
           onClick={handleAsk}
           disabled={isTextLoading || isImageLoading}
@@ -247,16 +257,15 @@ export default function Body() {
               width="100%"
               maxWidth="450px"
               objectFit="contain"
-              className="fade-in-image"
+              className="fade-in-image hover-glow"
+              onClick={() => window.open(imageUrl, "_blank")}
               style={{
                 border: "6px solid #C7F2E3",
                 backgroundColor: "#F9FFF9",
                 padding: "8px",
-                boxShadow: "0 6px 20px rgba(0, 0, 0, 0.25)",
                 cursor: "pointer",
                 marginBottom: "4px",
               }}
-              onClick={() => window.open(imageUrl, "_blank")}
             />
           </div>
         ) : null}
@@ -272,11 +281,13 @@ export default function Body() {
         main {
           min-height: 100vh;
           width: 100%;
-          padding: 3.5rem 1rem;
+          padding: 6rem 1rem; /* increased vertical padding to prevent cutoff */
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: flex-start; /* keeps layout from stretching oddly */
           background-color: #5b78b4;
+          overflow-y: auto; /* allow scrolling if needed */
         }
         .panda-container {
           display: flex;
@@ -366,11 +377,23 @@ export default function Body() {
           width: 220px;
           border-radius: 50px;
           box-shadow: 3px 6px 0px rgba(0, 0, 0, 0.3);
-          transition: all 0.2s ease-in-out;
+          transition: all 0.3s ease-in-out;
+          animation: pulseGlow 3s ease-in-out infinite;
         }
         :global(.center-button:hover) {
-          transform: translateY(-3px) scale(1.02);
-          box-shadow: 0 0 20px rgba(0, 0, 0, 0.18);
+          transform: translateY(-3px) scale(1.03);
+          box-shadow: 0 0 25px rgba(56, 161, 105, 0.6), 0 0 40px rgba(56, 161, 105, 0.4);
+        }
+        @keyframes pulseGlow {
+          0% {
+            box-shadow: 0 0 10px rgba(56, 161, 105, 0.4), 0 0 20px rgba(56, 161, 105, 0.2);
+          }
+          50% {
+            box-shadow: 0 0 20px rgba(56, 161, 105, 0.8), 0 0 35px rgba(56, 161, 105, 0.5);
+          }
+          100% {
+            box-shadow: 0 0 10px rgba(56, 161, 105, 0.4), 0 0 20px rgba(56, 161, 105, 0.2);
+          }
         }
 
         .typing-dots {
@@ -441,10 +464,15 @@ export default function Body() {
           animation: fadeIn 0.9s ease-in-out;
           border-radius: 16px;
           transition: transform 0.25s ease, box-shadow 0.25s ease;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); /* base shadow moved from inline */
         }
-        .fade-in-image:hover {
+        :global(.hover-glow) {
+          transition: transform 0.25s ease, box-shadow 0.25s ease;
+          will-change: transform, box-shadow;
+        }
+        :global(.hover-glow:hover) {
           transform: scale(1.03);
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+          box-shadow: 0 0 25px rgba(56, 161, 105, 0.9), 0 0 40px rgba(56, 161, 105, 0.5) !important;
         }
         @keyframes fadeIn {
           from {
@@ -479,6 +507,12 @@ export default function Body() {
           z-index: 5;
           pointer-events: none;
           animation: iPulse 3s ease-in-out infinite;
+        }
+        .i-dot.ai-dot {
+          top: 0.1em;
+          left: 81%;         /* align more naturally with the uppercase I */
+          width: 0.26em;
+          height: 0.26em;
         }
         @keyframes iPulse {
           0%,

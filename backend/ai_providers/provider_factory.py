@@ -10,7 +10,7 @@ from .image.pollinations_image_provider import PollinationsImageProvider
 
 # ---- Text Provider ----
 def get_text_provider():
-    provider_name = os.getenv("AI_TEXT_PROVIDER", "openrouter").lower()
+    provider_name = os.getenv("AI_TEXT_PROVIDER").lower()
 
     if provider_name == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
@@ -27,7 +27,7 @@ def get_text_provider():
 
 # ---- Image Provider ----
 def get_image_provider():
-    provider_name = os.getenv("AI_IMAGE_PROVIDER", "pollinations").lower()
+    provider_name = os.getenv("AI_IMAGE_PROVIDER").lower()
 
     if provider_name == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
