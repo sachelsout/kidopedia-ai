@@ -109,7 +109,7 @@ def chat_api():
     user_message = data.get("message", "")
     session_id = data.get("session_id", "default_user")
     is_image = any(word in user_message.lower() for word in ["draw", "show", "picture", "image"])
-    
+
     reply, image_url, conversation = ask_question(
         user_message,
         session_id=session_id,
